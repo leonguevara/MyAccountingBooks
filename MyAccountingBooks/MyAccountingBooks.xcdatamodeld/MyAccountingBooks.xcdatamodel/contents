@@ -2,11 +2,11 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24512" systemVersion="25C56" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
     <entity name="Account" representedClassName="Account" syncable="YES" codeGenerationType="class">
         <attribute name="accountRole" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="code" optional="YES" attributeType="String"/>
         <attribute name="commoditySCU" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="isHidden" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="isPlaceholder" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="name" attributeType="String" defaultValueString="No Name"/>
@@ -32,10 +32,10 @@
         </uniquenessConstraints>
     </entity>
     <entity name="AccountOwner" representedClassName="AccountOwner" syncable="YES" codeGenerationType="class">
-        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
         <attribute name="displayName" attributeType="String" defaultValueString="No Name"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <relationship name="ledgers" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Ledger" inverseName="owner" inverseEntity="Ledger"/>
         <uniquenessConstraints>
             <uniquenessConstraint>
@@ -47,6 +47,8 @@
         <attribute name="code" attributeType="String" defaultValueString="No Code"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="kind" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
         <attribute name="name" attributeType="String" defaultValueString="No Name"/>
         <attribute name="normalBalance" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="sortOrder" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
@@ -67,6 +69,7 @@
         <attribute name="fraction" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
         <attribute name="fullName" optional="YES" attributeType="String" defaultValueString="No Name"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="mnemonic" attributeType="String" defaultValueString="MXN"/>
         <attribute name="namespace" attributeType="String" defaultValueString="CURRENCY"/>
         <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Account" inverseName="commodity" inverseEntity="Account"/>
@@ -88,6 +91,7 @@
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
         <attribute name="currencyCode" attributeType="String" defaultValueString="MXN"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="name" attributeType="String" defaultValueString="No Name"/>
         <attribute name="precision" attributeType="Integer 16" defaultValueString="2" usesScalarValueType="YES"/>
         <attribute name="template" attributeType="String" defaultValueString="SAT"/>
@@ -172,6 +176,7 @@
         <attribute name="endDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="instanceCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="lastOccur" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="numOccur" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
@@ -214,6 +219,7 @@
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
         <attribute name="enterDate" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isVoided" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="memo" optional="YES" attributeType="String"/>
         <attribute name="num" optional="YES" attributeType="String"/>
         <attribute name="postDate" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
