@@ -1,9 +1,231 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="true" userDefinedModelVersionIdentifier="">
-    <entity name="Item" representedClassName="Item" syncable="YES" codeGenerationType="class">
-        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24512" systemVersion="25C56" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
+    <entity name="Account" representedClassName="Account" syncable="YES" codeGenerationType="class">
+        <attribute name="accountRole" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="code" optional="YES" attributeType="String"/>
+        <attribute name="commoditySCU" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isHidden" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isPlaceholder" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="name" attributeType="String" defaultValueString="No Name"/>
+        <attribute name="nonStdSCU" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <relationship name="accountType" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountType" inverseName="accounts" inverseEntity="AccountType"/>
+        <relationship name="children" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="parent" inverseEntity="Account"/>
+        <relationship name="commodity" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Commodity" inverseName="accounts" inverseEntity="Commodity"/>
+        <relationship name="ledger" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Ledger" inverseName="accounts" inverseEntity="Ledger"/>
+        <relationship name="parent" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="children" inverseEntity="Account"/>
+        <relationship name="rootOfLedger" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Ledger" inverseName="rootAccount" inverseEntity="Ledger"/>
+        <relationship name="scheduledSplits" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ScheduledSplit" inverseName="account" inverseEntity="ScheduledSplit"/>
+        <relationship name="scheduledTransaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ScheduledTransaction" inverseName="templateRootAccount" inverseEntity="ScheduledTransaction"/>
+        <relationship name="splits" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Split" inverseName="account" inverseEntity="Split"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+            <uniquenessConstraint>
+                <constraint value="ledger"/>
+                <constraint value="code"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
-    <elements>
-        <element name="Item" positionX="-63" positionY="-18" width="128" height="44"/>
-    </elements>
+    <entity name="AccountOwner" representedClassName="AccountOwner" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="displayName" attributeType="String" defaultValueString="No Name"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="ledgers" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Ledger" inverseName="owner" inverseEntity="Ledger"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="AccountType" representedClassName="AccountType" syncable="YES" codeGenerationType="class">
+        <attribute name="code" attributeType="String" defaultValueString="No Code"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String" defaultValueString="No Name"/>
+        <attribute name="normalBalance" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="sortOrder" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="standard" optional="YES" attributeType="String" defaultValueString="SAT/NIIF"/>
+        <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Account" inverseName="accountType" inverseEntity="Account"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+            <uniquenessConstraint>
+                <constraint value="standard"/>
+                <constraint value="code"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Commodity" representedClassName="Commodity" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="fraction" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="fullName" optional="YES" attributeType="String" defaultValueString="No Name"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="mnemonic" attributeType="String" defaultValueString="MXN"/>
+        <attribute name="namespace" attributeType="String" defaultValueString="CURRENCY"/>
+        <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Account" inverseName="commodity" inverseEntity="Account"/>
+        <relationship name="pricesAsCommodity" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Price" inverseName="commodity" inverseEntity="Price"/>
+        <relationship name="pricesAsCurrency" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Price" inverseName="currency" inverseEntity="Price"/>
+        <relationship name="scheduledTransactions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ScheduledTransaction" inverseName="currencyCommodity" inverseEntity="ScheduledTransaction"/>
+        <relationship name="transactons" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Transaction" inverseName="currencyCommodity" inverseEntity="Transaction"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+            <uniquenessConstraint>
+                <constraint value="namespace"/>
+                <constraint value="mnemonic"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Ledger" representedClassName="Ledger" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="currencyCode" attributeType="String" defaultValueString="MXN"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String" defaultValueString="No Name"/>
+        <attribute name="precision" attributeType="Integer 16" defaultValueString="2" usesScalarValueType="YES"/>
+        <attribute name="template" attributeType="String" defaultValueString="SAT"/>
+        <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Account" inverseName="ledger" inverseEntity="Account"/>
+        <relationship name="owner" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountOwner" inverseName="ledgers" inverseEntity="AccountOwner"/>
+        <relationship name="payees" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Payee" inverseName="ledger" inverseEntity="Payee"/>
+        <relationship name="rootAccount" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="rootOfLedger" inverseEntity="Account"/>
+        <relationship name="scheduledTransactions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ScheduledTransaction" inverseName="ledger" inverseEntity="ScheduledTransaction"/>
+        <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Transaction" inverseName="ledger" inverseEntity="Transaction"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+            <uniquenessConstraint>
+                <constraint value="owner"/>
+                <constraint value="name"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Payee" representedClassName="Payee" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="name" attributeType="String" defaultValueString="No Name"/>
+        <relationship name="ledger" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Ledger" inverseName="payees" inverseEntity="Ledger"/>
+        <relationship name="scheduledTransactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ScheduledTransaction" inverseName="payee" inverseEntity="ScheduledTransaction"/>
+        <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Transaction" inverseName="payee" inverseEntity="Transaction"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Price" representedClassName="Price" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="date" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="source" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <attribute name="valueDenom" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="valueNum" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="commodity" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Commodity" inverseName="pricesAsCommodity" inverseEntity="Commodity"/>
+        <relationship name="currency" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Commodity" inverseName="pricesAsCurrency" inverseEntity="Commodity"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Recurrence" representedClassName="Recurrence" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="mult" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="periodStart" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="periodType" optional="YES" attributeType="String"/>
+        <attribute name="weekendAdjust" attributeType="String" defaultValueString="none"/>
+        <relationship name="scheduledTransaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ScheduledTransaction" inverseName="recurrences" inverseEntity="ScheduledTransaction"/>
+    </entity>
+    <entity name="ScheduledSplit" representedClassName="ScheduledSplit" syncable="YES" codeGenerationType="class">
+        <attribute name="action" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memo" optional="YES" attributeType="String"/>
+        <attribute name="side" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="valueDenom" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="valueNum" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="scheduledSplits" inverseEntity="Account"/>
+        <relationship name="scheduledTransaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ScheduledTransaction" inverseName="scheduledSplits" inverseEntity="ScheduledTransaction"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="ScheduledTransaction" representedClassName="ScheduledTransaction" syncable="YES" codeGenerationType="class">
+        <attribute name="advCreation" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="advNotify" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="autoCreate" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="autoNotify" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="enabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="endDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="instanceCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="lastOccur" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="numOccur" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="remOccur" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="startDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="currencyCommodity" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Commodity" inverseName="scheduledTransactions" inverseEntity="Commodity"/>
+        <relationship name="ledger" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Ledger" inverseName="scheduledTransactions" inverseEntity="Ledger"/>
+        <relationship name="payee" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Payee" inverseName="scheduledTransactions" inverseEntity="Payee"/>
+        <relationship name="recurrences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Recurrence" inverseName="scheduledTransaction" inverseEntity="Recurrence"/>
+        <relationship name="scheduledSplits" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ScheduledSplit" inverseName="scheduledTransaction" inverseEntity="ScheduledSplit"/>
+        <relationship name="templateRootAccount" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="scheduledTransaction" inverseEntity="Account"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Split" representedClassName="Split" syncable="YES" codeGenerationType="class">
+        <attribute name="action" optional="YES" attributeType="String"/>
+        <attribute name="amount" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memo" optional="YES" attributeType="String"/>
+        <attribute name="quantityDenom" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="quantityNum" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="reconcileDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="reconcileState" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="side" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="valueDenom" attributeType="Integer 32" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="valueNum" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="splits" inverseEntity="Account"/>
+        <relationship name="transaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Transaction" inverseName="splits" inverseEntity="Transaction"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="Transaction" representedClassName="Transaction" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="enterDate" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memo" optional="YES" attributeType="String"/>
+        <attribute name="num" optional="YES" attributeType="String"/>
+        <attribute name="postDate" attributeType="Date" defaultDateTimeInterval="-978285600" usesScalarValueType="NO"/>
+        <attribute name="status" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="currencyCommodity" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Commodity" inverseName="transactons" inverseEntity="Commodity"/>
+        <relationship name="ledger" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Ledger" inverseName="transactions" inverseEntity="Ledger"/>
+        <relationship name="payee" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Payee" inverseName="transactions" inverseEntity="Payee"/>
+        <relationship name="splits" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Split" inverseName="transaction" inverseEntity="Split"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
 </model>

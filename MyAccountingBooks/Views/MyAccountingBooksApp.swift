@@ -18,13 +18,13 @@ struct MyAccountingBooksApp: App {
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }*/
-    @StateObject private var persistence = PersistenceController.shared
+    private let persistence = PersistenceController.shared
     
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(\.managedObjectContext, persistence.container.viewContext)
-                .environmentObject(persistence)
+                .environment(\.managedObjectContext, persistence.viewContext)
+                // .environmentObject(PersistenceController.shared)
         }
     }
 }

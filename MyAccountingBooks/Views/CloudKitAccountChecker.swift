@@ -8,23 +8,32 @@
 import CloudKit
 
 final class CloudKitAccountChecker {
-    static func checkAccountStatus() async -> Result<Void, String> {
+
+    static func checkAccountStatus() async -> Result<Void, CloudKitAccountError> {
         do {
             let status = try await CKContainer.default().accountStatus()
+
             switch status {
             case .available:
                 return .success(())
+
             case .noAccount:
-                return .failure("No hay una cuenta de iCloud iniciada en este Mac.")
+                return .failure(.noAccount)
+
             case .restricted:
-                return .failure("El acceso a iCloud está restringido (MDM/controles).")
+                return .failure(.restricted)
+
+            case .temporarilyUnavailable:
+                return .failure(.temporarilyUnavailable)
+
             case .couldNotDetermine:
-                return .failure("No se pudo determinar el estado de iCloud.")
+                return .failure(.couldNotDetermine)
+
             @unknown default:
-                return .failure("Estado de iCloud desconocido.")
+                return .failure(.unknown)
             }
         } catch {
-            return .failure("Error consultando iCloud: \(error.localizedDescription)")
+            return .failure(.underlying(error))
         }
     }
 }

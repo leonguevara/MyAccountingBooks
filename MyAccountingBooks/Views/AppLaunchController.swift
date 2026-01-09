@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import Combine
 
 @MainActor
 final class AppLaunchController: ObservableObject {
@@ -31,8 +32,8 @@ final class AppLaunchController: ObservableObject {
 
         let status = await CloudKitAccountChecker.checkAccountStatus()
         switch status {
-        case .failure(let msg):
-            phase = .iCloudUnavailable(message: msg)
+        case .failure(let error):
+            phase = .iCloudUnavailable(message: error.localizedDescription)
             return
         case .success:
             break
@@ -65,7 +66,9 @@ final class AppLaunchController: ObservableObject {
             guard let self else { return }
             guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                     as? NSPersistentCloudKitContainer.Event else { return }
-            self.isSyncing = (event.endDate == nil)
+            Task { @MainActor in
+                self.isSyncing = (event.endDate == nil)
+            }
         }
     }
 

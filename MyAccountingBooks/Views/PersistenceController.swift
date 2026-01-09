@@ -9,7 +9,7 @@ import Foundation
 import CoreData
 
 @MainActor
-final class PersistenceController: ObservableObject {
+final class PersistenceController {
     static let shared = PersistenceController()
 
     let container: NSPersistentCloudKitContainer
