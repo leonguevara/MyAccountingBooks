@@ -29,35 +29,9 @@
 		8C0A3E0F2F0D7D0E00B7446E /* MyAccountingBooksUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyAccountingBooksUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8C0A3E2C2F104FEE00B7446E /* Exceptions for "MyAccountingBooks" folder in "MyAccountingBooks" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				ContentView.swift_bak,
-				Persistence.swift_bak,
-			);
-			target = 8C0A3DF22F0D7D0B00B7446E /* MyAccountingBooks */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		8C0A3E2D2F104FEE00B7446E /* Exceptions for "MyAccountingBooks" folder in "Compile Sources" phase from "MyAccountingBooks" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 8C0A3DEF2F0D7D0B00B7446E /* Sources */;
-			membershipExceptions = (
-				ContentView.swift_bak,
-				Persistence.swift_bak,
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8C0A3DF52F0D7D0B00B7446E /* MyAccountingBooks */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				8C0A3E2C2F104FEE00B7446E /* Exceptions for "MyAccountingBooks" folder in "MyAccountingBooks" target */,
-				8C0A3E2D2F104FEE00B7446E /* Exceptions for "MyAccountingBooks" folder in "Compile Sources" phase from "MyAccountingBooks" target */,
-			);
 			path = MyAccountingBooks;
 			sourceTree = "<group>";
 		};

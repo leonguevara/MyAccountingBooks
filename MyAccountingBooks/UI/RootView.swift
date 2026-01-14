@@ -35,10 +35,15 @@ struct RootView: View {
                 .environmentObject(session)
                 .onAppear { showOnboarding = !hasData }
                 .sheet(isPresented: $showOnboarding, onDismiss: refreshHasData) {
-                    OnboardingWizardView(onFinished: {
-                        showOnboarding = false
-                        refreshHasData()
-                    })
+                    OnboardingWizardView(
+                        onCancel: {
+                            showOnboarding = false
+                        },
+                        onFinished: {
+                            showOnboarding = false
+                            refreshHasData()
+                        }
+                    )
                     .environment(\.managedObjectContext, moc)
                     .environmentObject(session)
                 }
@@ -50,3 +55,4 @@ struct RootView: View {
         showOnboarding = (count == 0)
     }
 }
+
