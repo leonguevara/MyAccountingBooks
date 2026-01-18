@@ -8,112 +8,117 @@
 import Foundation
 import CoreData
 
-/// Balance calculado para una cuenta.
-/// - own: sólo movimientos directos de la cuenta
-/// - total: own + descendientes (si se solicita)
+/// A pair of balances for an account.
+///
+/// - `own`: The balance contributed by the account's own splits only (no descendants).
+/// - `total`: The balance including all descendant accounts (equal to `own` when descendants
+///   are excluded or there are none).
 struct AccountBalance {
     let own: Decimal
     let total: Decimal
 }
 
+/// Utilities for computing account balances for a ledger.
+///
+/// Provides depth-first aggregation of split values into per-account balances, with optional
+/// inclusion of descendant accounts. Results are returned as a dictionary keyed by
+/// `NSManagedObjectID` to avoid retaining full managed objects.
 enum AccountBalanceService {
 
-    /// Calcula balances para todas las cuentas del ledger.
+    /// Computes per-account balances for the given ledger.
+    ///
+    /// The method fetches all `Account` and `Split` objects for the ledger, aggregates each
+    /// account's own balance from its splits (respecting debit/credit sign rules by account kind),
+    /// then performs a depth-first traversal to optionally include descendant balances.
+    ///
     /// - Parameters:
-    ///   - ledger: ledger
-    ///   - context: moc
-    ///   - includeDescendants: si true, total incluye hijos
+    ///   - ledger: The `Ledger` whose accounts and splits will be considered.
+    ///   - context: The `NSManagedObjectContext` used for fetches and object IDs.
+    ///   - includeDescendants: When `true`, each account's `total` includes all descendants; when
+    ///     `false`, `total` equals `own`.
+    /// - Returns: A dictionary mapping `Account` object IDs to their `AccountBalance`.
+    /// - Note: If the ledger has a `rootAccount`, aggregation starts there; otherwise, it starts
+    ///   at all top-level accounts (those with `parent == nil`).
     static func computeBalances(
         ledger: Ledger,
         context: NSManagedObjectContext,
         includeDescendants: Bool
     ) throws -> [NSManagedObjectID: AccountBalance] {
 
-        // 1) Obtén todas las cuentas del ledger
-        let accountReq = Account.fetchRequest()
-        accountReq.predicate = NSPredicate(format: "ledger == %@", ledger)
+        let accReq = Account.fetchRequest()
+        accReq.predicate = NSPredicate(format: "ledger == %@", ledger)
+        let accounts: [Account] = (try? context.fetch(accReq)) ?? []
 
-        let accounts = try context.fetch(accountReq) as! [Account]
-
-        // index por objectID
         var childrenByParent: [NSManagedObjectID: [Account]] = [:]
-        var roots: [Account] = []
-
-        for acc in accounts {
-            if let parent = acc.parent {
-                childrenByParent[parent.objectID, default: []].append(acc)
-            } else {
-                roots.append(acc)
+        for a in accounts {
+            if let p = a.parent {
+                childrenByParent[p.objectID, default: []].append(a)
             }
         }
 
-        // 2) Suma de splits por cuenta (own balance “contable”)
-        // Asumimos: Split tiene account, valueNum, valueDenom, side
-        let splitReq = Split.fetchRequest()
-        splitReq.predicate = NSPredicate(format: "account.ledger == %@", ledger)
+        let spReq = Split.fetchRequest()
+        spReq.predicate = NSPredicate(format: "account.ledger == %@", ledger)
+        let splits: [Split] = (try? context.fetch(spReq)) ?? []
 
-        let splits = try context.fetch(splitReq) as! [Split]
-
-        var own: [NSManagedObjectID: Decimal] = [:]
-        own.reserveCapacity(accounts.count)
-
+        var ownByAcc: [NSManagedObjectID: Decimal] = [:]
         for sp in splits {
             guard let acc = sp.account else { continue }
             let amount = splitValue(sp)
             let signed = signedAmount(amount: amount, split: sp, account: acc)
-            own[acc.objectID, default: 0] += signed
+            ownByAcc[acc.objectID, default: 0] += signed
         }
 
-        // 3) Propaga a padres (total)
         var result: [NSManagedObjectID: AccountBalance] = [:]
 
         func dfs(_ acc: Account) -> Decimal {
-            let ownValue = own[acc.objectID, default: 0]
+            let own = ownByAcc[acc.objectID, default: 0]
             if !includeDescendants {
-                result[acc.objectID] = AccountBalance(own: ownValue, total: ownValue)
-                return ownValue
+                result[acc.objectID] = .init(own: own, total: own)
+                return own
             }
 
-            let kids = childrenByParent[acc.objectID, default: []]
-            let kidsTotal = kids.reduce(Decimal(0)) { partial, child in
-                partial + dfs(child)
-            }
-            let total = ownValue + kidsTotal
-            result[acc.objectID] = AccountBalance(own: ownValue, total: total)
+            let kids = (childrenByParent[acc.objectID] ?? []).sorted { ($0.code ?? "") < ($1.code ?? "") }
+            let kidsTotal = kids.reduce(Decimal(0)) { $0 + dfs($1) }
+            let total = own + kidsTotal
+            result[acc.objectID] = .init(own: own, total: total)
             return total
         }
 
-        for r in roots {
-            _ = dfs(r)
+        if let root = ledger.rootAccount {
+            _ = dfs(root)
+        } else {
+            for a in accounts where a.parent == nil { _ = dfs(a) }
         }
 
         return result
     }
 
-    // MARK: - Helpers
-
+    /// Converts a split's numerator/denominator into a `Decimal` amount.
+    ///
+    /// Treats a zero denominator as `1` to avoid division by zero.
     private static func splitValue(_ sp: Split) -> Decimal {
         let denom = sp.valueDenom == 0 ? 1 : sp.valueDenom
         return Decimal(sp.valueNum) / Decimal(denom)
     }
 
-    /// Regla de signo estilo contable.
-    /// Ajusta aquí según tu codificación:
-    /// - side: 0 = DEBIT, 1 = CREDIT (ejemplo)
-    /// - accountType.kind: enum (Asset, Liability, Equity, Income, Expense, etc.)
+    /// Returns the signed amount for a split given the account's kind.
+    ///
+    /// Assumes `Split.side` uses `0` for debit and `1` for credit. Assets and expenses increase
+    /// with debits and decrease with credits; liabilities, equity, and income do the opposite.
     private static func signedAmount(amount: Decimal, split: Split, account: Account) -> Decimal {
         let isDebit = (split.side == 0)
 
-        let kind = account.accountType?.kind ?? 0
-        // Ejemplo de mapping: ajústalo a tu enum real
-        // 0 Asset, 1 Liability, 2 Equity, 3 Income, 4 Expense
-        switch kind {
-        case 0, 4: // Asset / Expense: Debe suma, Haber resta
+        switch account.kind {
+        case AccountTypeKind.asset.rawValue,
+             AccountTypeKind.expense.rawValue:
             return isDebit ? amount : -amount
-        case 1, 2, 3: // Liability/Equity/Income: Haber suma, Debe resta
+
+        case AccountTypeKind.liability.rawValue,
+             AccountTypeKind.equity.rawValue,
+             AccountTypeKind.income.rawValue:
             return isDebit ? -amount : amount
+
         default:
-            // fallback conservador: Debe suma
             return isDebit ? amount : -amount
         }
     }
