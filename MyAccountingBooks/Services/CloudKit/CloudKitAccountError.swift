@@ -5,16 +5,30 @@
 //  Created by León Felipe Guevara Chávez on 2026-01-08.
 //
 
+/// CloudKitAccountError
+///
+/// App-specific error type that represents CloudKit account availability issues and maps to
+/// localized, user-facing messages.
+//
+
 import Foundation
 
+/// Errors describing iCloud account states relevant to CloudKit usage.
 enum CloudKitAccountError: LocalizedError {
+    /// No iCloud account is signed in on the device.
     case noAccount
+    /// iCloud access is restricted (e.g., MDM or parental controls).
     case restricted
+    /// iCloud services are temporarily unavailable.
     case temporarilyUnavailable
+    /// The account status could not be determined.
     case couldNotDetermine
+    /// An unknown account status was returned.
     case unknown
+    /// Wraps an underlying error returned by CloudKit APIs.
     case underlying(Error)
 
+    /// Localized, user-facing description for each error case.
     var errorDescription: String? {
         switch self {
         case .noAccount:
@@ -32,3 +46,4 @@ enum CloudKitAccountError: LocalizedError {
         }
     }
 }
+

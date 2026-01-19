@@ -1,3 +1,10 @@
+//
+//  Account+UI.swift
+//  MyAccountingBooks
+//
+//  Created by León Felipe Guevara Chávez on 2026-01-11.
+//
+
 import Foundation
 
 /// UI conveniences for presenting `Account` classification values.
