@@ -30,6 +30,8 @@ struct AppShellView: View {
     private var ledgers: FetchedResults<Ledger>
 
     @State private var selectedLedger: Ledger?
+    @State private var resetError: String?
+    @State private var showResetAlert = false
 
     var body: some View {
         NavigationSplitView {
@@ -43,10 +45,29 @@ struct AppShellView: View {
             }
             .frame(minWidth: 220)
             .navigationTitle("MyAccountingBooks")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(role: .destructive) {
+                        do {
+                            try PersistenceController.shared.resetLocalStore()
+                        } catch {
+                            resetError = error.localizedDescription
+                            showResetAlert = true
+                        }
+                    } label: {
+                        Label("Reset local", systemImage: "trash")
+                    }
+                }
+            }
+            .alert("No se pudo resetear", isPresented: $showResetAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(resetError ?? "Error desconocido")
+            }
         } content: {
             if let ledger = selectedLedger ?? ledgers.first {
-                // AccountsTreeGnuCashView(ledger: ledger)
-                LedgerAccountsDebugView(ledger: ledger)
+                AccountsTreeGnuCashView(ledger: ledger)
+                // LedgerAccountsDebugView(ledger: ledger)
             } else {
                 ContentUnavailableView(
                     "Sin libros",

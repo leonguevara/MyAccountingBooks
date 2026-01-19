@@ -10,118 +10,74 @@ import CoreData
 
 struct AccountsTreeGnuCashView: View {
     @Environment(\.managedObjectContext) private var moc
-
     let ledger: Ledger
 
-    @State private var balances: [NSManagedObjectID: AccountBalance] = [:]
-    @State private var showTotals: Bool = true
-    @State private var errorMessage: String?
+    @StateObject private var balanceService = AccountBalanceService()
+
+    private var root: Account? { ledger.rootAccount }
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerBar
+        VStack(alignment: .leading) {
 
-            Divider()
+            if let err = balanceService.lastErrorMessage {
+                Text(err).foregroundStyle(.red)
+            }
 
-            if let root = ledger.rootAccount {
-                OutlineGroup([root], children: \.childrenArrayOptional) { account in
-                    row(account)
+            if let root {
+                List {
+                    OutlineGroup([root], children: \.childrenArrayOptional) { account in
+                        HStack(spacing: 12) {
+                            Text(account.name ?? "(sin nombre)")
+                                .frame(width: 280, alignment: .leading)
+
+                            Text(roleLabel(account.accountRole))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 180, alignment: .leading)
+
+                            Text(balanceText(for: account))
+                                .monospacedDigit()
+                                .frame(width: 160, alignment: .trailing)
+                        }
+                    }
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
             } else {
-                ContentUnavailableView(
-                    "Sin cuentas",
-                    systemImage: "list.bullet.indent",
-                    description: Text("No se encontró la cuenta raíz.")
-                )
+                ContentUnavailableView("No hay rootAccount",
+                                      systemImage: "exclamationmark.triangle")
             }
         }
-        .navigationTitle("Cuentas")
-        .task { await loadBalances() }
-        .alert("Error", isPresented: Binding(get: { errorMessage != nil }, set: { _ in errorMessage = nil })) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(errorMessage ?? "")
+        .onAppear {
+            balanceService.recompute(in: ledger, context: moc)
         }
-    }
-
-    private var headerBar: some View {
-        HStack(spacing: 12) {
-            Toggle("Mostrar totales (incluye hijos)", isOn: $showTotals)
-                .toggleStyle(.switch)
-                .onChange(of: showTotals) { _, _ in
-                    Task { await loadBalances() }
-                }
-
-            Spacer()
-
-            if balances.isEmpty {
-                ProgressView().controlSize(.small)
+        .toolbar {
+            Button("Recalcular balances") {
+                balanceService.recompute(in: ledger, context: moc)
             }
         }
-        .padding(12)
     }
 
-    @ViewBuilder
-    private func row(_ account: Account) -> some View {
-        HStack(spacing: 12) {
-            // Col 1: Cuenta (con indent automático del OutlineGroup)
-            HStack(spacing: 8) {
-                Image(systemName: account.isPlaceholder ? "folder" : "doc.text")
-                    .foregroundStyle(.secondary)
+    private func balanceText(for account: Account) -> String {
+        let raw = AccountBalanceService.totalBalance(
+            for: account,
+            balances: balanceService.lastBalances
+        )
 
-                Text(account.name ?? "Sin nombre")
-                    .lineLimit(1)
-            }
-            .frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
+        let shown = AccountBalanceService.displayBalanceGnuCashStyle(
+            kind: account.kind,
+            rawBalance: raw
+        )
 
-            // Col 2: Tipo/Rol
-            Text(account.accountTypeDisplay)
-                .foregroundStyle(.secondary)
-                .frame(width: 110, alignment: .leading)
-
-            // Col 3: Descripción (si tienes)
-            Text(account.accountDescription ?? "")
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(minWidth: 220, maxWidth: .infinity, alignment: .leading)
-
-            // Col 4: Balance
-            Text(formatMoney(balance(for: account)))
-                .font(.system(.body, design: .monospaced))
-                .frame(width: 140, alignment: .trailing)
-        }
-        .padding(.vertical, 3)
-    }
-
-    private func balance(for account: Account) -> Decimal {
-        let b = balances[account.objectID]
-        return showTotals ? (b?.total ?? 0) : (b?.own ?? 0)
-    }
-
-    private func formatMoney(_ value: Decimal) -> String {
-        // Puedes meter moneda del ledger aquí (por ahora simple)
         let nf = NumberFormatter()
         nf.numberStyle = .currency
-        nf.currencyCode = ledger.currencyCommodity?.mnemonic ?? "MXN"
-        nf.maximumFractionDigits = 2
-        nf.minimumFractionDigits = 2
-        return nf.string(from: value as NSDecimalNumber) ?? "\(value)"
+        nf.currencyCode = ledger.currencyCode
+        nf.maximumFractionDigits = Int(ledger.precision)
+        nf.minimumFractionDigits = Int(ledger.precision)
+
+        return nf.string(from: shown as NSDecimalNumber) ?? "\(shown)"
     }
 
-    private func loadBalances() async {
-        do {
-            let computed = try moc.performAndWait {
-                try AccountBalanceService.computeBalances(
-                    ledger: ledger,
-                    context: moc,
-                    includeDescendants: showTotals
-                )
-            }
-            balances = computed
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+    private func roleLabel(_ raw: Int16) -> String {
+        // ajusta a tu enum AccountRole
+        // ejemplo:
+        return AccountRole(rawValue: raw)?.label ?? "-"
     }
 }

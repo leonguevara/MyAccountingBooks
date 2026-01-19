@@ -5,121 +5,142 @@
 //  Created by León Felipe Guevara Chávez on 2026-01-11.
 //
 
+/// AccountBalanceService
+///
+/// Computes and exposes account balances for a given `Ledger` using Core Data.
+///
+/// Responsibilities:
+/// - Fetch `Split` entries for a ledger and compute direct balances per account.
+/// - Aggregate hierarchical totals by traversing the account tree.
+/// - Publish the latest computed balances and any error encountered.
+//
+
 import Foundation
 import CoreData
+import Combine
 
-/// A pair of balances for an account.
+/// A main-actor service that calculates and publishes balances for accounts in a `Ledger`.
 ///
-/// - `own`: The balance contributed by the account's own splits only (no descendants).
-/// - `total`: The balance including all descendant accounts (equal to `own` when descendants
-///   are excluded or there are none).
-struct AccountBalance {
-    let own: Decimal
-    let total: Decimal
-}
+/// Use `recompute(in:context:)` to refresh balances from persistent `Split`s. Direct balances are
+/// computed per account, while `totalBalance(for:balances:)` recursively sums a node and its children
+/// to provide hierarchical totals.
+@MainActor
+final class AccountBalanceService: ObservableObject {
 
-/// Utilities for computing account balances for a ledger.
-///
-/// Provides depth-first aggregation of split values into per-account balances, with optional
-/// inclusion of descendant accounts. Results are returned as a dictionary keyed by
-/// `NSManagedObjectID` to avoid retaining full managed objects.
-enum AccountBalanceService {
-
-    /// Computes per-account balances for the given ledger.
+    /// Container for balance maps computed for a single ledger.
     ///
-    /// The method fetches all `Account` and `Split` objects for the ledger, aggregates each
-    /// account's own balance from its splits (respecting debit/credit sign rules by account kind),
-    /// then performs a depth-first traversal to optionally include descendant balances.
+    /// - Note: `direct` contains the per-account signed amount derived from splits only for that account.
+    struct LedgerBalances {
+        /// Map of `Account.objectID` to its direct (non-aggregated) balance.
+        var direct: [NSManagedObjectID: Decimal] = [:]
+    }
+
+    /// The most recently computed balances. Updated when `recompute(in:context:)` succeeds.
+    @Published private(set) var lastBalances: LedgerBalances = .init()
+
+    /// A user-facing error description if the last recompute failed; `nil` on success.
+    @Published private(set) var lastErrorMessage: String?
+
+    /// Recomputes balances for the given ledger and updates published properties.
     ///
     /// - Parameters:
-    ///   - ledger: The `Ledger` whose accounts and splits will be considered.
-    ///   - context: The `NSManagedObjectContext` used for fetches and object IDs.
-    ///   - includeDescendants: When `true`, each account's `total` includes all descendants; when
-    ///     `false`, `total` equals `own`.
-    /// - Returns: A dictionary mapping `Account` object IDs to their `AccountBalance`.
-    /// - Note: If the ledger has a `rootAccount`, aggregation starts there; otherwise, it starts
-    ///   at all top-level accounts (those with `parent == nil`).
-    static func computeBalances(
-        ledger: Ledger,
-        context: NSManagedObjectContext,
-        includeDescendants: Bool
-    ) throws -> [NSManagedObjectID: AccountBalance] {
-
-        let accReq = Account.fetchRequest()
-        accReq.predicate = NSPredicate(format: "ledger == %@", ledger)
-        let accounts: [Account] = (try? context.fetch(accReq)) ?? []
-
-        var childrenByParent: [NSManagedObjectID: [Account]] = [:]
-        for a in accounts {
-            if let p = a.parent {
-                childrenByParent[p.objectID, default: []].append(a)
-            }
+    ///   - ledger: The ledger whose splits should be analyzed.
+    ///   - context: The Core Data context used to fetch splits.
+    /// - Note: Runs on the main actor; heavy work should be offloaded if the dataset is large.
+    func recompute(in ledger: Ledger, context: NSManagedObjectContext) {
+        do {
+            let balances = try Self.computeDirectBalances(in: ledger, context: context)
+            self.lastBalances = balances
+            self.lastErrorMessage = nil
+        } catch {
+            self.lastErrorMessage = error.localizedDescription
         }
-
-        let spReq = Split.fetchRequest()
-        spReq.predicate = NSPredicate(format: "account.ledger == %@", ledger)
-        let splits: [Split] = (try? context.fetch(spReq)) ?? []
-
-        var ownByAcc: [NSManagedObjectID: Decimal] = [:]
-        for sp in splits {
-            guard let acc = sp.account else { continue }
-            let amount = splitValue(sp)
-            let signed = signedAmount(amount: amount, split: sp, account: acc)
-            ownByAcc[acc.objectID, default: 0] += signed
-        }
-
-        var result: [NSManagedObjectID: AccountBalance] = [:]
-
-        func dfs(_ acc: Account) -> Decimal {
-            let own = ownByAcc[acc.objectID, default: 0]
-            if !includeDescendants {
-                result[acc.objectID] = .init(own: own, total: own)
-                return own
-            }
-
-            let kids = (childrenByParent[acc.objectID] ?? []).sorted { ($0.code ?? "") < ($1.code ?? "") }
-            let kidsTotal = kids.reduce(Decimal(0)) { $0 + dfs($1) }
-            let total = own + kidsTotal
-            result[acc.objectID] = .init(own: own, total: total)
-            return total
-        }
-
-        if let root = ledger.rootAccount {
-            _ = dfs(root)
-        } else {
-            for a in accounts where a.parent == nil { _ = dfs(a) }
-        }
-
-        return result
     }
 
-    /// Converts a split's numerator/denominator into a `Decimal` amount.
+    // MARK: - Pure functions (static)
+
+    /// Computes direct balances per account by summing signed split amounts.
     ///
-    /// Treats a zero denominator as `1` to avoid division by zero.
-    private static func splitValue(_ sp: Split) -> Decimal {
-        let denom = sp.valueDenom == 0 ? 1 : sp.valueDenom
-        return Decimal(sp.valueNum) / Decimal(denom)
+    /// Fetches all `Split` objects for the specified `ledger`, interprets `side` as
+    /// 0 = debit (positive) and 1 = credit (negative), and accumulates results in a map.
+    ///
+    /// - Parameters:
+    ///   - ledger: The ledger that owns the splits to analyze.
+    ///   - context: The Core Data context used for fetching.
+    /// - Returns: A `LedgerBalances` value containing the direct balance map.
+    /// - Throws: Any fetch error encountered by the context.
+    static func computeDirectBalances(
+        in ledger: Ledger,
+        context: NSManagedObjectContext
+    ) throws -> LedgerBalances {
+
+        // Prepare a fetch request for all splits belonging to the provided ledger.
+        let fr = NSFetchRequest<Split>(entityName: "Split")
+        fr.predicate = NSPredicate(format: "transaction.ledger == %@", ledger)
+        fr.returnsObjectsAsFaults = false
+
+        // Avoid faults to speed up iteration when only reading values.
+        
+        let splits = try context.fetch(fr)
+
+        // Accumulator for per-account direct balances.
+        var out = LedgerBalances()
+
+        for s in splits {
+            guard let a = s.account else { continue }
+            let amt = decimalAmount(valueNum: s.valueNum, valueDenom: Int64(s.valueDenom))
+
+            // Interpret side: 0 = debit (positive), 1 = credit (negative).
+            let signed = (s.side == 0) ? amt : -amt
+            out.direct[a.objectID, default: 0] += signed
+        }
+
+        return out
     }
 
-    /// Returns the signed amount for a split given the account's kind.
+    /// Computes the hierarchical total for an account by summing its direct balance and all descendants.
     ///
-    /// Assumes `Split.side` uses `0` for debit and `1` for credit. Assets and expenses increase
-    /// with debits and decrease with credits; liabilities, equity, and income do the opposite.
-    private static func signedAmount(amount: Decimal, split: Split, account: Account) -> Decimal {
-        let isDebit = (split.side == 0)
+    /// - Parameters:
+    ///   - account: The root account to total.
+    ///   - balances: A previously computed `LedgerBalances` with direct amounts.
+    /// - Returns: The aggregated balance for the account subtree.
+    static func totalBalance(
+        for account: Account,
+        balances: LedgerBalances
+    ) -> Decimal {
+        var sum = balances.direct[account.objectID, default: 0]
 
-        switch account.kind {
-        case AccountTypeKind.asset.rawValue,
-             AccountTypeKind.expense.rawValue:
-            return isDebit ? amount : -amount
-
-        case AccountTypeKind.liability.rawValue,
-             AccountTypeKind.equity.rawValue,
-             AccountTypeKind.income.rawValue:
-            return isDebit ? -amount : amount
-
-        default:
-            return isDebit ? amount : -amount
+        if let children = account.children as? Set<Account>, !children.isEmpty {
+            for c in children {
+                sum += totalBalance(for: c, balances: balances)
+            }
         }
+        return sum
+    }
+
+    /// Converts a rational amount (valueNum/valueDenom) into a Decimal.
+    ///
+    /// - Parameters:
+    ///   - valueNum: The numerator component.
+    ///   - valueDenom: The denominator component. If zero, returns 0 to avoid division by zero.
+    /// - Returns: The decimal result of the fraction or zero when denominator is zero.
+    private static func decimalAmount(valueNum: Int64, valueDenom: Int64) -> Decimal {
+        guard valueDenom != 0 else { return 0 }
+        return Decimal(valueNum) / Decimal(valueDenom)
+    }
+    
+    /// Aplica el estilo "GnuCash-like" al BALANCE mostrado.
+    /// En contabilidad, típicamente pasivos/capital/ingresos se muestran con signo invertido
+    /// vs el acumulado "natural" del motor.
+    static func displayBalanceGnuCashStyle(kind: Any?, rawBalance: Decimal) -> Decimal {
+
+        // Caso 2: si `kind` viene como Int16 (si guardas enum como entero)
+        if let n = kind as? Int16, let k = AccountTypeKind(rawValue: n) {
+            return displayBalanceGnuCashStyle(kind: k, rawBalance: rawBalance)
+        }
+
+        // Fallback: si no sabemos el tipo, no tocamos el signo.
+        return rawBalance
     }
 }
+
