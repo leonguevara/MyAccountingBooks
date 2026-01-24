@@ -5,27 +5,18 @@
 //  Created by León Felipe Guevara Chávez on 2026-01-08.
 //
 
-/*import SwiftUI
 
-struct AppShellView: View {
-    var body: some View {
-        NavigationSplitView {
-            SidebarView()
-        } detail: {
-            Text("Selecciona un Ledger")
-                .foregroundStyle(.secondary)
-        }
-    }
-}*/
 
 import SwiftUI
 import CoreData
 
 struct AppShellView: View {
     @Environment(\.managedObjectContext) private var moc
+    @EnvironmentObject private var session: AppSession
 
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Ledger.createdAt, ascending: true)]
+        sortDescriptors: [NSSortDescriptor(keyPath: \Ledger.createdAt, ascending: true)],
+        animation: .default
     )
     private var ledgers: FetchedResults<Ledger>
 
@@ -45,6 +36,13 @@ struct AppShellView: View {
             }
             .frame(minWidth: 220)
             .navigationTitle("MyAccountingBooks")
+            .onChange(of: selectedLedger) { _, newValue in
+                if let ledger = newValue {
+                    session.openLedger(ledger)
+                } else {
+                    session.closeLedger()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(role: .destructive) {
@@ -58,6 +56,13 @@ struct AppShellView: View {
                         Label("Reset local", systemImage: "trash")
                     }
                 }
+                ToolbarItem(placement: .automatic) {
+                    Button("Cerrar libro") {
+                        selectedLedger = nil
+                        session.closeLedger()
+                    }
+                    .disabled((session.resolveActiveLedger(in: moc) == nil) && (selectedLedger == nil))
+                }
             }
             .alert("No se pudo resetear", isPresented: $showResetAlert) {
                 Button("OK", role: .cancel) {}
@@ -65,14 +70,23 @@ struct AppShellView: View {
                 Text(resetError ?? "Error desconocido")
             }
         } content: {
-            if let ledger = selectedLedger ?? ledgers.first {
+            // ✅ sin auto-reopen
+            let active = session.resolveActiveLedger(in: moc)
+            let current = selectedLedger ?? active
+
+            if let ledger = current {
                 AccountsTreeGnuCashView(ledger: ledger)
-                // LedgerAccountsDebugView(ledger: ledger)
-            } else {
+            } else if ledgers.isEmpty {
                 ContentUnavailableView(
                     "Sin libros",
                     systemImage: "book.closed",
                     description: Text("Crea un libro para comenzar.")
+                )
+            } else {
+                ContentUnavailableView(
+                    "Elige un libro",
+                    systemImage: "book",
+                    description: Text("Selecciona un libro en la barra lateral.")
                 )
             }
         } detail: {
@@ -83,7 +97,10 @@ struct AppShellView: View {
             )
         }
         .onAppear {
-            selectedLedger = selectedLedger ?? ledgers.first
+            // ✅ Solo reflejar la sesión si existe; NO elegir ledgers.first
+            if selectedLedger == nil, let open = session.resolveActiveLedger(in: moc) {
+                selectedLedger = open
+            }
         }
     }
 }

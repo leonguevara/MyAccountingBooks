@@ -20,17 +20,9 @@ import CoreData
 /// main content inside a single `WindowGroup` scene.
 @main
 struct MyAccountingBooksApp: App {
-    // Legacy bootstrap example kept for reference; replaced by `RootView` and `persistence.viewContext`.
-    /*let persistenceController = PersistenceController.shared
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
-        }
-    }*/
     /// Shared Core Data stack used for the app's managed object context.
     private let persistence = PersistenceController.shared
+    @StateObject private var session = AppSession()
     
     /// Declares the app's scenes and injects the managed object context into the environment.
     var body: some Scene {
@@ -38,6 +30,7 @@ struct MyAccountingBooksApp: App {
             // Root of the app's UI hierarchy.
             RootView()
                 .environment(\.managedObjectContext, persistence.viewContext)
+                .environmentObject(session)
                 // .environmentObject(PersistenceController.shared)
         }
     }

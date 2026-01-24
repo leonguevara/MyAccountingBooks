@@ -13,7 +13,7 @@ struct RootView: View {
     private let persistence = PersistenceController.shared
 
     @StateObject private var launch = AppLaunchController()
-    @StateObject private var session = AppSession()
+    //@StateObject private var session = AppSession()
 
     @State private var showOnboarding = false
 
@@ -32,7 +32,7 @@ struct RootView: View {
 
         case .ready(let hasData):
             AppShellView()
-                .environmentObject(session)
+                //.environmentObject(session)
                 .onAppear { showOnboarding = !hasData }
                 .sheet(isPresented: $showOnboarding, onDismiss: refreshHasData) {
                     OnboardingWizardView(
@@ -45,7 +45,7 @@ struct RootView: View {
                         }
                     )
                     .environment(\.managedObjectContext, moc)
-                    .environmentObject(session)
+                    //.environmentObject(session)
                 }
         }
     }
