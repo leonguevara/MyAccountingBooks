@@ -41,3 +41,7 @@ enum AccountRole: Int16, CaseIterable {
     case expense
 }
 
+/// AccountRole+Label
+///
+/// Extends `AccountRole` with a short, human-readable label intended for UI.
+/// Adjust the returned strings to match your enum cases and localization needs.
