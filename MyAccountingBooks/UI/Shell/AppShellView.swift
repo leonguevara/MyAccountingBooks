@@ -23,6 +23,10 @@ struct AppShellView: View {
     @State private var selectedLedger: Ledger?
     @State private var resetError: String?
     @State private var showResetAlert = false
+    
+    private var currentLedger: Ledger? {
+        selectedLedger ?? session.resolveActiveLedger(in: moc)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -57,11 +61,17 @@ struct AppShellView: View {
                     }
                 }
                 ToolbarItem(placement: .automatic) {
-                    Button("Cerrar libro") {
+                    /*Button("Cerrar libro") {
                         selectedLedger = nil
                         session.closeLedger()
                     }
-                    .disabled((session.resolveActiveLedger(in: moc) == nil) && (selectedLedger == nil))
+                    .disabled((session.resolveActiveLedger(in: moc) == nil) && (selectedLedger == nil))*/
+                    Button("Cerrar libro") {
+                        // Cerrar = sesión + UI
+                        session.closeLedger()
+                        selectedLedger = nil
+                    }
+                    .disabled(currentLedger == nil)
                 }
             }
             .alert("No se pudo resetear", isPresented: $showResetAlert) {
@@ -71,10 +81,10 @@ struct AppShellView: View {
             }
         } content: {
             // ✅ sin auto-reopen
-            let active = session.resolveActiveLedger(in: moc)
-            let current = selectedLedger ?? active
+            /*let active = session.resolveActiveLedger(in: moc)
+            let current = selectedLedger ?? active*/
 
-            if let ledger = current {
+            if let ledger = currentLedger {
                 AccountsTreeGnuCashView(ledger: ledger)
             } else if ledgers.isEmpty {
                 ContentUnavailableView(
@@ -99,6 +109,15 @@ struct AppShellView: View {
         .onAppear {
             // ✅ Solo reflejar la sesión si existe; NO elegir ledgers.first
             if selectedLedger == nil, let open = session.resolveActiveLedger(in: moc) {
+                selectedLedger = open
+            }
+        }
+        .onChange(of: session.activeLedgerID) { _, _ in
+            // Sesión -> UI cuando cambie por fuera
+            let open = session.resolveActiveLedger(in: moc)
+            
+            // Evita loops: solo actualiza si realmente cambió
+            if selectedLedger?.objectID != open?.objectID {
                 selectedLedger = open
             }
         }

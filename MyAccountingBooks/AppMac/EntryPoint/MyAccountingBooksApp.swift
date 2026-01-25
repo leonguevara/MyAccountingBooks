@@ -28,7 +28,7 @@ struct MyAccountingBooksApp: App {
     var body: some Scene {
         WindowGroup {
             // Root of the app's UI hierarchy.
-            RootView()
+            RootView()  // AppShellView()
                 .environment(\.managedObjectContext, persistence.viewContext)
                 .environmentObject(session)
                 // .environmentObject(PersistenceController.shared)
