@@ -89,6 +89,11 @@ final class AppSession: ObservableObject {
         }
     }
     
+    /// Marks a ledger as opened (and optionally sets owner).
+    func openLedger(id: UUID) {
+        activeLedgerID = id
+    }
+    
     /// Devuelve el ledger activo si hay uno en sesión; si no, regresa nil.
     func resolveActiveLedger(in context: NSManagedObjectContext) -> Ledger? {
         guard let id = activeLedgerID else { return nil }
