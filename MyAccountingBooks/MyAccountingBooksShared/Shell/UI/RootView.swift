@@ -33,7 +33,9 @@ struct RootView: View {
         case .ready(let hasData):
             AppShellView()
                 //.environmentObject(session)
-                .onAppear { showOnboarding = !hasData }
+                .onAppear {
+                    showOnboarding = !hasData
+                }
                 .sheet(isPresented: $showOnboarding, onDismiss: refreshHasData) {
                     OnboardingWizardView(
                         onCancel: {

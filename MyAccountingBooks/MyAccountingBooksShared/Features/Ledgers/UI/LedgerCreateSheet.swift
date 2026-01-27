@@ -32,9 +32,14 @@ struct LedgerCreateSheet: View {
                     TextField("Nombre del libro", text: $name)
 
                     TextField("Moneda (ISO)", text: $currencyCode)
+                    #if os(iOS)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                    #endif
                         .onChange(of: currencyCode) { _, newValue in
-                            let up = newValue.uppercased()
-                            if up != newValue { currencyCode = up }
+                            let filtered = newValue.uppercased()
+                                .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+                            if filtered != newValue { currencyCode = filtered }
                         }
 
                     Stepper("Decimales: \(precision)", value: $precision, in: 0...6)
@@ -74,8 +79,8 @@ struct LedgerCreateSheet: View {
                 context: moc
             )
 
-            if openAfterCreate, let id = ledger.id {
-                session.openLedger(id: id)
+            if openAfterCreate {
+                session.openLedger(ledger)
             }
 
             dismiss()

@@ -26,8 +26,14 @@ struct LedgerLibraryView: View {
     @State private var errorMessage: String?
 
     /// Opcional: si quieres que al abrir un ledger, se cierre esta pantalla automáticamente.
+    @Binding var selection: Ledger?
     let dismissOnOpen: Bool
     @Environment(\.dismiss) private var dismiss
+    
+    init(selection: Binding<Ledger?>, dismissOnOpen: Bool = false) {
+        self._selection = selection
+        self.dismissOnOpen = dismissOnOpen
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,20 +44,18 @@ struct LedgerLibraryView: View {
                     .padding(.top, 8)
             }
 
-            List {
-                Section("Libros") {
-                    if ledgers.isEmpty {
-                        ContentUnavailableView(
-                            "Sin libros",
-                            systemImage: "book.closed",
-                            description: Text("Crea tu primer libro para comenzar.")
-                        )
-                        .padding(.vertical, 24)
-                    } else {
-                        ForEach(ledgers) { ledger in
-                            row(ledger)
-                        }
-                    }
+            List(selection: $selection) {
+                ForEach(ledgers, id: \.objectID) { ledger in
+                    Text(ledger.name ?? "Sin nombre")
+                        .tag(Optional(ledger)) // <- IMPORTANTÍSIMO para selection con Optional
+                }
+            }
+            .onChange(of: selection) { _, newValue in
+                // Mantén sesión sincronizada con UI
+                if let id = newValue?.id {
+                    session.openLedger(id: id)
+                } else {
+                    session.closeLedger()
                 }
             }
         }
@@ -195,8 +199,8 @@ struct LedgerLibraryView: View {
 
     private func open(_ ledger: Ledger) {
         errorMessage = nil
-        guard let id = ledger.id else { return }
-        session.openLedger(id: id)
+        // guard let id = ledger.id else { return }
+        session.openLedger(ledger)
         if dismissOnOpen { dismiss() }
     }
 

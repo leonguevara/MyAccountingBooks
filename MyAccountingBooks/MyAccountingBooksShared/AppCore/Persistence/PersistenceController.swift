@@ -42,6 +42,7 @@ final class PersistenceController {
     ///   (useful for previews and tests). Otherwise, uses the default SQLite location.
     init(inMemory: Bool = false) {
         container = Self.makeContainer(inMemory: inMemory)
+        loadStoresIfNeeded()
     }
     
     /// Creates and configures the CloudKit-backed persistent container.
